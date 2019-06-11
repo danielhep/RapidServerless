@@ -1,6 +1,7 @@
 'use strict'
 const mongoose = require('mongoose')
-const { DateTime } = require('luxon')
+const { DateTime, Interval } = require('luxon')
+const _ = require('lodash')
 
 const dbLookup = require('./src/dbLookups.js')
 
@@ -96,12 +97,38 @@ module.exports.getScheduleByStop = async (event, context) => {
   let trips = await dbLookup.getTripsFromRouteNames(serviceIds, routes)
 
   let stopTimes = await dbLookup.getStopTimesFromTrips(stopId, serviceIds, trips)
+
+  let departures = []
+  let lastTime = DateTime.fromFormat(stopTimes[0].departure_time, 'H:mm:ss')
+  stopTimes.forEach((stopTime, ind) => {
+    let trip = _.find(trips, { trip_id: stopTime.trip_id })
+    let routeId = trip.route_id
+    let tripHeadsign = trip.trip_headsign
+
+    let route = _.find(routes, { route_id: routeId })
+    let routeName = route.route_short_name
+
+    let time = DateTime.fromFormat(stopTime.departure_time, 'H:mm:ss')
+    let spacing = (ind)
+      ? Interval.fromDateTimes(lastTime, time).length('seconds')
+      : undefined
+    lastTime = time
+
+    departures.push({
+      routeId,
+      routeName,
+      time: time.toISO(),
+      spacing,
+      tripHeadsign
+    })
+  })
+
   return {
     statusCode: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Credentials': true
     },
-    body: JSON.stringify({ stopTimes, trips, routes, serviceIds }, null, 2)
+    body: JSON.stringify(departures, null, 2)
   }
 }

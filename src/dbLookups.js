@@ -84,7 +84,8 @@ exports.getStopIdFromStopCode = async (stopCode) => {
   return stopId
 }
 
-exports.getRoutes = async (routeNames) => {
+exports.getRoutes = async (routeNames = []) => {
+  // If route names is undefinied, make it an empty array
   let query = routeNames.length
     ? { route_short_name: { $in: routeNames }, agency_key: agencyKey }
     : { agency_key: agencyKey }
@@ -126,11 +127,7 @@ exports.getStopTimesFromTrips = async (stopId, serviceIds, trips) => {
     query['trip_id'] = { $in: _.map(trips, 'trip_id') }
   }
 
-  console.log(`StopId: ${stopId}`)
-  console.log(`Trip: ${trips[0]}`)
-
   let stopTimes = await StopTimes.find(query, 'trip_id departure_time').exec()
-  console.log(`stopTime: ${stopTimes}`)
 
   stopTimes = _.sortBy(stopTimes, s =>
     DateTime.fromFormat(s.departure_time, 'H:mm:ss')
