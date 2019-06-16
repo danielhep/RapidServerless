@@ -14,7 +14,7 @@ const CalendarDates = require('gtfs/models/gtfs/calendar-date')
 
 const agencyKey = 'whatcom-transit-authority'
 
-const mongoURI = 'mongodb+srv://readonly:1sv5GULN0Fp5WXd5@cluster0-dguyv.azure.mongodb.net/gtfsdump?retryWrites=true&w=majority'
+const mongoURI = 'mongodb+srv://readonly:1sv5GULN0Fp5WXd5@cluster0-dguyv.azure.mongodb.net/gtfs?retryWrites=true&w=majority'
 
 let conn = null
 
@@ -53,6 +53,8 @@ module.exports.getStops = async (event, context) => {
     { agency_key: agencyKey }
   ).exec()
 
+  console.log(`Stops: ${stops}`)
+
   return {
     statusCode: 200,
     headers: {
@@ -90,13 +92,19 @@ module.exports.getScheduleByStop = async (event, context) => {
   let routeNames = event.multiValueQueryStringParameters.route
   let stopId = event.multiValueQueryStringParameters.stop
 
+  console.log(`We got: ${stopId}`)
+
+  let stop = await conn.model('Stop').findById(stopId).exec()
+
+  console.log(`Stop: ${stop}`)
+
   let date = DateTime.fromISO(event.multiValueQueryStringParameters.date)
   let serviceIds = await dbLookup.getServiceCodes(date)
   // get a list of routes from the route names
   let routes = await dbLookup.getRoutes(routeNames)
   let trips = await dbLookup.getTripsFromRouteNames(serviceIds, routes)
 
-  let stopTimes = await dbLookup.getStopTimesFromTrips(stopId, serviceIds, trips)
+  let stopTimes = await dbLookup.getStopTimesFromTrips(stop.stop_id, serviceIds, trips)
 
   let departures = []
   let lastTime = DateTime.fromFormat(stopTimes[0].departure_time, 'H:mm:ss')
@@ -117,7 +125,7 @@ module.exports.getScheduleByStop = async (event, context) => {
     departures.push({
       routeId,
       routeName,
-      time: time.toISO(),
+      time: time.toISOTime(),
       spacing,
       tripHeadsign
     })
