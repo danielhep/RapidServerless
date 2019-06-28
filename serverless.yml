@@ -22,6 +22,8 @@ app: RapidWebAPI
 provider:
   name: aws
   runtime: nodejs10.x
+  environment: 
+    MONGO_URI: mongodb+srv://readonly:1sv5GULN0Fp5WXd5@cluster0-dguyv.azure.mongodb.net/gtfs?retryWrites=true&w=majority
 
 package:
  include:

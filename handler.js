@@ -14,7 +14,7 @@ const CalendarDates = require('gtfs/models/gtfs/calendar-date')
 
 const agencyKey = 'nctd'
 
-const mongoURI = 'mongodb+srv://readonly:1sv5GULN0Fp5WXd5@cluster0-dguyv.azure.mongodb.net/gtfs?retryWrites=true&w=majority'
+const mongoURI = process.env.MONGO_URI
 
 let conn = null
 
