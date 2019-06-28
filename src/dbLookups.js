@@ -105,9 +105,17 @@ exports.getRoutes = async (routeNames = []) => {
 
 exports.getRoutesFromIDs = async (routeIDs = []) => {
   let objIds = routeIDs.map(x => mongoose.Types.ObjectId(x))
-  let query = {
-    _id: {
-      $in: objIds
+  let query
+  if (routeIDs.length) {
+    query = {
+      _id: {
+        $in: objIds
+      },
+      agency_key: agencyKey
+    }
+  } else {
+    query = {
+      agency_key: agencyKey
     }
   }
 
