@@ -1,5 +1,6 @@
 const _ = require('lodash')
 const { DateTime, Interval } = require('luxon')
+const mongoose = require('mongoose')
 
 let agencyKey
 
@@ -37,31 +38,40 @@ exports.getServiceCodes = async (searchDate) => {
   let dayName = searchDate.toFormat('EEEE').toLowerCase()
   let calendars = await exports.getCalendars()
   let serviceIds = []
+  console.log(`there are ${calendars.length} calendars`)
   calendars.forEach(item => {
-    // also ensure that today is within the valid date range
-    let startDate = DateTime.fromFormat(item.start_date.toString(), 'yyyyLLdd')
-    let endDate = DateTime.fromFormat(item.end_date.toString(), 'yyyyLLdd')
-    let interval = Interval.fromDateTimes(startDate, endDate)
+    // Sometimes GTFS data contains rows with no actual data,
+    // We can ignore those.
+    if (item.service_id) {
+      // also ensure that today is within the valid date range
+      let startDate = DateTime.fromFormat(item.start_date.toString(), 'yyyyLLdd')
+      let endDate = DateTime.fromFormat(item.end_date.toString(), 'yyyyLLdd')
+      let interval = Interval.fromDateTimes(startDate, endDate)
 
-    if (item[dayName] && interval.contains(searchDate)) {
-      serviceIds.push(item.service_id)
+      if (item[dayName] && interval.contains(searchDate)) {
+        serviceIds.push(item.service_id)
+      }
     }
     // TODO: Indicate if there is no calendar dates
   })
 
   // add service IDs for calendar-dates
   let calendarDates = await exports.getCalendarDates()
-  calendarDates.forEach(item => {
-    let date = DateTime.fromFormat(item.date.toString(), 'yyyyLLdd')
-    if (+date === +searchDate) {
-      if (item.exception_type === 1) { // INCLUDE service on this date
-        serviceIds.push(item.service_id)
-      } else if (item.exception_type === 2) { // EXCLUDE service from this date
-        // log(item.service_id)
-        _.pull(serviceIds, item.service_id)
+  if (calendarDates.length) {
+    calendarDates.forEach(item => {
+      if (item.service_id) {
+        let date = DateTime.fromFormat(item.date.toString(), 'yyyyLLdd')
+        if (+date === +searchDate) {
+          if (item.exception_type === 1) { // INCLUDE service on this date
+            serviceIds.push(item.service_id)
+          } else if (item.exception_type === 2) { // EXCLUDE service from this date
+            // log(item.service_id)
+            _.pull(serviceIds, item.service_id)
+          }
+        }
       }
-    }
-  })
+    })
+  }
 
   return serviceIds
 }
@@ -89,6 +99,18 @@ exports.getRoutes = async (routeNames = []) => {
   let query = routeNames.length
     ? { route_short_name: { $in: routeNames }, agency_key: agencyKey }
     : { agency_key: agencyKey }
+  let routes = await Routes.find(query, 'route_id route_short_name').exec()
+  return routes
+}
+
+exports.getRoutesFromIDs = async (routeIDs = []) => {
+  let objIds = routeIDs.map(x => mongoose.Types.ObjectId(x))
+  let query = {
+    _id: {
+      $in: objIds
+    }
+  }
+
   let routes = await Routes.find(query, 'route_id route_short_name').exec()
   return routes
 }
